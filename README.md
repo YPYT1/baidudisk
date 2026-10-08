@@ -1,5 +1,7 @@
 # 百度网盘空间分析
 
+[![校验与构建](https://github.com/YPYT1/baidudisk/actions/workflows/check.yml/badge.svg)](https://github.com/YPYT1/baidudisk/actions/workflows/check.yml)
+
 Bun + TypeScript 编写的 Chrome / Edge 浏览器扩展。借用已登录的网盘标签页，取得文件夹含全部子目录的总大小，排序并逐层查看。
 
 使用 Bun + TypeScript 开发的 Chrome / Edge 浏览器扩展。借助已登录的百度网盘网页，查询文件夹包含全部子文件与子目录的总大小，通过排序、目录树和空间矩形图逐层定位占用；需要查看具体大文件时，再对目标目录进行深度扫描。
