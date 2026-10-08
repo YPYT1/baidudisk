@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百度网盘空间分析</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-titlebar">
+    <div class="brand"><span class="app-icon" aria-hidden="true"></span><h1>百度网盘空间分析</h1><span class="read-only">只读</span></div>
+    <span id="connection" class="connection">尚未连接</span>
+  </header>
+  <main>
+    <div class="command-bar">
+      <button type="button" id="connect" class="primary">连接已登录的网盘</button>
+      <span class="command-divider" aria-hidden="true"></span>
+      <button type="button" id="scan" disabled>分析本层</button>
+      <button type="button" id="refresh" disabled title="忽略近期结果，重新读取本层目录并查询大小">重新查询</button>
+      <button type="button" id="deep-scan" disabled title="递归读取所有子目录，用于找具体大文件；目录多时较慢">深度扫描</button>
+      <button type="button" id="stop" class="danger" hidden>停止</button>
+      <div class="command-end"><button type="button" id="export" disabled>导出 CSV</button><button type="button" id="clear-cache">清除本地记录</button></div>
+    </div>
+    <section class="summary-strip" aria-label="空间概览">
+      <div class="quota-summary"><span class="summary-label">网盘已用 / 总容量</span><strong id="quota">—</strong><div class="capacity-track"><span id="capacity-bar"></span></div></div>
+      <div><span class="summary-label">当前目录已知合计</span><strong id="known-size">—</strong><span id="scope-state" class="summary-detail">等待连接</span></div>
+      <div><span class="summary-label">本层条目</span><strong id="entry-count">—</strong><span id="counts" class="summary-detail">文件夹和文件</span></div>
+      <div class="summary-guide"><span class="summary-label">逐层分析</span><span>进入文件夹后自动统计下一层</span><span class="summary-detail">文件夹大小包含全部子文件与子目录</span></div>
+    </section>
+    <div id="notice" class="notice" role="status">先在另一个标签页登录百度网盘，再点击连接。无需复制 Cookie；不会下载或修改云端文件。</div>
+    <div id="progress" class="progress" hidden><span class="spinner" aria-hidden="true"></span><span id="progress-text">正在统计…</span></div>
+    <div class="view-toolbar">
+      <div class="view-tabs" role="group" aria-label="查看范围"><button type="button" id="home" class="active">目录占用</button><button type="button" id="large-files">已发现的大文件</button></div>
+      <div class="view-controls">
+        <label for="kind">显示</label><select id="kind"><option value="all">全部</option><option id="folders-option" value="folders">只看文件夹</option><option value="files">只看文件</option></select>
+        <label for="sort">排序</label><select id="sort"><option value="size">占用大小</option><option value="name">名称</option><option value="files">文件数</option><option value="dirs">子目录数</option></select>
+        <label for="direction">顺序</label><select id="direction"><option value="desc">降序 ↓</option><option value="asc">升序 ↑</option></select>
+        <label for="filter" class="search-label">搜索</label><input id="filter" type="search" placeholder="名称或路径…">
+      </div>
+    </div>
+    <div class="path-bar"><button type="button" id="up" disabled title="返回上一级并自动分析">上一级</button><nav id="breadcrumbs" aria-label="目录路径"></nav><span id="view-label">文件夹占用</span></div>
+    <div class="analysis-panes">
+      <aside class="directory-pane" aria-label="已读取的目录树">
+        <div class="pane-heading"><h2>目录树</h2><span>按需读取</span></div>
+        <nav id="directory-tree" aria-label="目录导航"></nav>
+      </aside>
+      <section class="listing-pane" aria-label="本层文件夹和文件占用">
+        <div class="pane-heading"><h2 id="list-heading">本层占用</h2><span id="visible-count">0 个条目</span></div>
+        <div class="table-wrap">
+          <table id="entry-table">
+            <thead><tr>
+              <th scope="col" class="name-column" data-column="name"><button type="button" data-sort="name">名称 / 路径</button></th>
+              <th scope="col" id="share-heading" class="share-column">本层占比</th>
+              <th scope="col" class="size-column" data-column="size"><button type="button" data-sort="size">占用大小</button></th>
+              <th scope="col" class="count-column" data-column="files"><button type="button" data-sort="files">文件数</button></th>
+              <th scope="col" class="count-column" data-column="dirs"><button type="button" data-sort="dirs">子目录数</button></th>
+              <th scope="col" class="status-column">状态</th>
+              <th scope="col" class="action-column">操作</th>
+            </tr></thead><tbody id="rows"></tbody>
+          </table>
+          <div id="empty" class="empty"><span class="empty-icon" aria-hidden="true"></span><h2>连接网盘，开始分析</h2><p>连接后自动分析首页各文件夹占用，进入文件夹后继续自动分析下一层。</p><button type="button" id="demo">先看看演示</button></div>
+        </div>
+      </section>
+      <aside class="types-pane" aria-label="已读取文件的类型统计">
+        <div class="pane-heading"><h2>文件类型</h2><span id="type-count">0 种</span></div>
+        <p class="panel-note" id="types-scope">当前目录内，仅统计已读取的文件；不代表全盘。</p>
+        <button type="button" id="clear-type" hidden>清除类型筛选</button>
+        <div class="types-wrap"><table class="types-table"><thead><tr><th scope="col">扩展名</th><th scope="col">已知占比</th><th scope="col">大小</th><th scope="col">文件</th></tr></thead><tbody id="type-rows"></tbody></table><p id="types-empty" class="panel-empty">进入文件夹或深度扫描后，会逐步发现文件类型。</p></div>
+      </aside>
+    </div>
+    <section class="treemap-section" aria-label="本层已知大小的空间矩形图">
+      <div class="pane-heading"><h2>空间矩形图</h2><span id="map-scope">对应当前筛选列表 · 面积按已知大小比例</span><label class="map-toggle"><input id="show-map" type="checkbox" checked>显示</label></div>
+      <div id="treemap" class="treemap" role="group" aria-label="点击文件夹矩形可进入并自动分析"><p id="map-empty">取得占用大小后，在这里按面积查看空间分布。</p></div>
+      <div class="map-caption"><span><i class="legend-folder" aria-hidden="true"></i> 文件夹合计（包含后代）<i class="legend-file" aria-hidden="true"></i> 文件 · 只显示已知且大于 0 的条目</span><span>小矩形可在上方列表查看；文件夹统计不能推断内部文件类型</span></div>
+    </section>
+    <footer class="statusbar"><span id="selection">就绪 · 云端文件保持原样</span><span id="snapshot-time">尚无扫描记录</span></footer>
+    <p class="footnote">未完成结果不是 0；“≥”表示仅取得部分大小。本层占比使用未筛选列表的已知合计，未知大小不参与计算。近期结果会复用，网盘内容变化后点“重新查询”。网盘配额可能包含回收站等，不一定等于目录合计。</p>
+  </main>
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

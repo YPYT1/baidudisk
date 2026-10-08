@@ -1,0 +1,41 @@
+name: 校验与构建
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 检查-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 检查（${{ matrix.os }}）
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: 获取源码
+        uses: actions/checkout@v4
+      - name: 安装 Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: 安装锁定依赖
+        run: bun install --frozen-lockfile
+      - name: 校验、测试与构建
+        run: bun run check
+      - name: 保存可加载的扩展文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: 百度网盘空间分析-${{ runner.os }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

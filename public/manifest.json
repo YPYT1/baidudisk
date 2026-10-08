@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "网盘空间分析 · 本地只读",
+  "version": "0.1.0",
+  "description": "使用已登录的百度网盘网页，统计文件夹占用、逐层查看和导出本地报告。不下载或删除网盘文件。",
+  "permissions": ["scripting", "storage"],
+  "host_permissions": ["https://pan.baidu.com/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "打开网盘空间分析" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'" }
+}
